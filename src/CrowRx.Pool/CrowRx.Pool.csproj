@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.1</TargetFramework>
+		<LangVersion>9</LangVersion>
+		<Nullable>enable</Nullable>
+
+		<!-- NuGet -->
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<VersionPrefix>1.0.1</VersionPrefix>
+
+		<!-- Native 방지 -->
+		<UseNativeCompilation>false</UseNativeCompilation>
+
+		<Title>CrowRx.Pool</Title>
+		<PackageTags>unity unity-editor</PackageTags>
+		<Company>$(Authors)</Company>
+		<Authors>newhory</Authors>
+		<Description>A pooling library for CrowRx. This package is intended for use with Unity3D 6.0 or newer only.</Description>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<Version>$(VersionPrefix)</Version>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="LICENSE" Pack="true" PackagePath=""/>
+		<None Include="README.md" Pack="true" PackagePath=""/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CrowRx.Core" Version="1.0.0"/>		
+	</ItemGroup>
+
+</Project>
