@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>ZLinq</id>
-    <version>1.5.4</version>
+    <version>1.5.5</version>
     <authors>Cysharp</authors>
     <license type="expression">MIT</license>
     <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
@@ -12,7 +12,7 @@
     <description>Zero allocation LINQ with LINQ to Span, LINQ to SIMD, and LINQ to Tree (FileSystem, JSON, GameObject, etc.) for all .NET platforms and Unity.</description>
     <copyright>© Cysharp, Inc.</copyright>
     <tags>linq</tags>
-    <repository type="git" url="https://github.com/Cysharp/ZLinq" branch="refs/heads/main" commit="61032309d4830d1b612d9af01ac97533f075d947" />
+    <repository type="git" url="https://github.com/Cysharp/ZLinq" branch="refs/heads/main" commit="1ac601f729c6025b6e33e107c1f6d3ae7e2f1f38" />
     <dependencies>
       <group targetFramework="net8.0" />
       <group targetFramework="net9.0" />
