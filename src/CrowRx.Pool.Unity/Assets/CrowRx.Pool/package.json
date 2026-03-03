@@ -1,6 +1,6 @@
 {
     "name": "com.crowlib.crowrx.pool",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "displayName": "CrowRx Pool",
     "author": {
         "name": "Hory",
@@ -10,7 +10,7 @@
     "description": "CrowRx pool system.",
     "category": "Scripting",
     "dependencies": {
-        "com.crowlib.crowrx": "1.0.0",
+        "com.crowlib.crowrx": "1.0.2",
         "com.cysharp.unitask": "2.5.10",
         "com.cysharp.r3": "1.3.0"
     }

@@ -9,7 +9,7 @@
         "com.cysharp.unitask": "2.5.10",
         "com.cysharp.zlinq": "1.5.4"
       },
-      "hash": "30607d1cf6bfbbe284cd8c7f95f050750dfab1a2"
+      "hash": "e0e0bb07abac878b5a25dd0afde73e93f8187470"
     },
     "com.cysharp.r3": {
       "version": "https://github.com/Cysharp/R3.git?path=src/R3.Unity/Assets/R3.Unity",
@@ -40,15 +40,6 @@
       "source": "git",
       "dependencies": {},
       "hash": "c2af83c9d4f8cdaada9d4a0e94de2f195d8e1d01"
-    },
-    "com.unity.ai.navigation": {
-      "version": "2.0.10",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.modules.ai": "1.0.0"
-      },
-      "url": "https://packages.unity.com"
     },
     "com.unity.burst": {
       "version": "1.8.28",
@@ -185,18 +176,6 @@
       "dependencies": {
         "com.unity.test-framework": "1.1.33",
         "com.unity.modules.jsonserialize": "1.0.0"
-      },
-      "url": "https://packages.unity.com"
-    },
-    "com.unity.timeline": {
-      "version": "1.8.10",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.modules.audio": "1.0.0",
-        "com.unity.modules.director": "1.0.0",
-        "com.unity.modules.animation": "1.0.0",
-        "com.unity.modules.particlesystem": "1.0.0"
       },
       "url": "https://packages.unity.com"
     },
