@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>CrowRx.Pool</id>
-    <version>1.0.2</version>
+    <version>1.0.4</version>
     <title>CrowRx.Pool</title>
     <authors>newhory</authors>
     <license type="file">LICENSE</license>
@@ -10,10 +10,10 @@
     <readme>README.md</readme>
     <description>A pooling library for CrowRx. This package is intended for use with Unity3D 6.0 or newer only.</description>
     <tags>unity unity-editor</tags>
-    <repository type="git" commit="5c14202a97577f7f76027f7b4f8e957592d9e1e6" />
+    <repository type="git" commit="fd2b456eca912e62eb7c4f144a4262b8c206e730" />
     <dependencies>
       <group targetFramework=".NETStandard2.1">
-        <dependency id="CrowRx.Core" version="1.0.2" exclude="Build,Analyzers" />
+        <dependency id="CrowRx.Core" version="1.0.6" exclude="Build,Analyzers" />
       </group>
     </dependencies>
   </metadata>
