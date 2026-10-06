@@ -45,11 +45,11 @@
 *.bundle filter=lfs diff=lfs merge=lfs -text
 *.chm filter=lfs diff=lfs merge=lfs -text
 *.chw filter=lfs diff=lfs merge=lfs -text
-*.dll filter=lfs diff=lfs merge=lfs
-*.exe filter=lfs diff=lfs merge=lfs
-*.dat filter=lfs diff=lfs merge=lfs
-*.assets filter=lfs diff=lfs merge=lfs
-*.resS filter=lfs diff=lfs merge=lfs
+*.dll filter=lfs diff=lfs merge=lfs -text
+*.exe filter=lfs diff=lfs merge=lfs -text
+*.dat filter=lfs diff=lfs merge=lfs -text
+*.assets filter=lfs diff=lfs merge=lfs -text
+*.resS filter=lfs diff=lfs merge=lfs -text
 *.docx filter=lfs diff=lfs merge=lfs -text
 *.exr filter=lfs diff=lfs merge=lfs -text
 *.jar filter=lfs diff=lfs merge=lfs -text
