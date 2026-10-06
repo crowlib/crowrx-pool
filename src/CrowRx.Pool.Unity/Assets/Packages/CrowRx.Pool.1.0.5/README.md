@@ -13,7 +13,10 @@ A high-performance pooling library for CrowRx, designed for Unity.
 
 ### Pooled Collections
 
-All pooled collections inherit from their `System.Collections.Generic` counterparts and implement `IDisposable`.
+All pooled collections implement `IDisposable`. `PooledQueue<T>` is a generation-checked value-type lease;
+the other pooled collections inherit from their `System.Collections.Generic` counterparts.
+
+Queue lifetime, capacity, allocation contracts and migration instructions: [QueuePool](QUEUE_POOL.ko.md).
 
 ```csharp
 using CrowRx.Pool.Collections;
