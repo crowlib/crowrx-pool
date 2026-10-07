@@ -7,7 +7,7 @@
 
 		<!-- NuGet -->
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<VersionPrefix>1.0.5</VersionPrefix>
+		<VersionPrefix>1.0.6</VersionPrefix>
 
 		<!-- Native 방지 -->
 		<UseNativeCompilation>false</UseNativeCompilation>
