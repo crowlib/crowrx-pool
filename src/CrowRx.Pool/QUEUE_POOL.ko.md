@@ -1,7 +1,9 @@
-# QueuePool 대여 계약과 마이그레이션
+# QueuePool 사용 계약
 
-`PooledQueue<T>`는 내부 Queue를 소유한 객체의 한 번의 대여를 나타내는 `readonly struct`다.
-다른 컬렉션 풀의 구현은 이번 변경에 포함되지 않는다. `netstandard2.1`과 엔진 독립성을 유지한다.
+`PooledQueue<T>`는 `Queue<T>`를 상속한 `IDisposable` 클래스다.
+다른 컬렉션 풀처럼 큐 객체와 내부 배열을 재사용하며 `netstandard2.1`과 엔진 독립성을 유지한다.
+`Enqueue`, `Dequeue`, `Count`, 조회·복사·순회는 기본 Queue 구현을 직접 사용한다.
+원소마다 세대 검사, 핸들 검증, 최대 개수 추적을 수행하지 않는다.
 
 ```csharp
 using CrowRx.Pool.Collections;
@@ -9,96 +11,87 @@ using CrowRx.Pool.Collections;
 QueuePool<int>.Warmup(inactiveCount: 4, capacity: 256);
 using var queue = QueuePool<int>.Get(256);
 queue.Enqueue(1);
-foreach (int item in queue)
+while (queue.TryDequeue(out int item))
 {
-    // 직접 foreach의 핸들과 열거자는 박싱하지 않는다.
+    // 일반 Queue와 같은 원소 처리 경로다.
 }
 ```
 
-## 수명과 예외
+## 반환과 사용 범위
 
-- 모든 복사본은 같은 대여다. 소유권이 복사본마다 새로 생기지 않는다.
-- 한 복사본의 `Dispose`는 대여를 종료하고 원소 참조를 정리한다. 다른 복사본도 즉시 무효다.
-- 종료된 대여, 재대여 이전 세대의 핸들, `default` 핸들의 컬렉션 접근은 `ObjectDisposedException`이다.
-  `Count`, 조회·복사, `TrimExcess`, 열거 생성 및 명시적 인터페이스 경로에도 같은 검사를 적용한다.
-  무효한 대여에서는 잘못된 복사 인수보다 수명 검사가 우선한다.
-- 중복 `Dispose`, 오래된 핸들·복사본의 `Dispose`, `default.Dispose()`는 무해하다.
-  현재 다른 세대의 대여를 비우거나 다시 반환하지 않는다.
-- 열거자의 `MoveNext`, 두 `Current`, `Reset`은 대여 세대를 검사한다. 열거 전에 만든 열거자도
-  반환·재대여 후에는 무효다. `MoveNext`와 `Reset`은 기본 Queue의 변경 검출을 유지한다.
-  유효한 대여에서 잘못된 위치의 `Current` 동작은 실행 런타임의 Queue 열거자 계약을 따른다.
-- 열거자 `Dispose`는 열거만 정리한다. 큐 대여를 반환하지 않으며 대여 종료 후 정리 호출도 허용한다.
-- 빈 큐의 `Peek`·`Dequeue`, 복사 인수 오류 등은 기본 Queue의 예외 계약을 따른다.
-- 세대 번호가 최대값에 도달한 객체는 반환 시 폐기하여 번호 순환으로 이전 핸들이 부활하지 않게 한다.
+- Dispose는 원소를 정리하고 큐를 풀에 반환한다. 배열은 유지하며 자동 Trim은 하지 않는다.
+- 재대여 전의 중복 Dispose는 무시한다.
+- 반환한 참조는 사용하지 않아야 한다. 반환 후 접근은 ObjectDisposedException으로 검출하지 않는다.
+- 재대여 후 오래된 참조로 Dispose를 호출하면 현재 사용 중인 큐도 정리하고 반환한다.
+  반환 후 Enqueue도 다음 사용자의 큐를 오염시킬 수 있다.
+- using 범위 밖으로 큐나 큐의 열거자를 보관하지 말고 반환 책임자를 하나로 정한다.
+- default는 null이다. null에 대한 접근과 직접 Dispose는 일반 참조 타입의 동작을 따른다.
+- 빈 큐의 Peek·Dequeue, 복사 인수 오류, 순회 중 변경은 기본 Queue의 계약을 따른다.
+  열거자에는 풀의 별도 수명 검사가 없다.
+- Queue가 제공하는 IReadOnlyCollection, IEnumerable, 비제네릭 ICollection을 그대로 사용한다.
+  Queue는 제네릭 ICollection을 구현하지 않는다.
 
-`IEnumerable<T>`, `IEnumerable`, `IReadOnlyCollection<T>`, 비제네릭 `ICollection`을 구현한다.
-Queue가 구현하지 않는 `ICollection<T>`는 추가하지 않는다. 내부 Queue를 반환하는 속성이나 변환은 없다.
-`ICollection.SyncRoot`는 Queue가 아닌 내부 대여 객체 토큰이며 풀 전체의 동기화 잠금이 아니다.
+## 용량과 할당
 
-## 용량, 보관, 할당
+`Get()`은 대기 큐를 LIFO로 재사용하고 없을 때만 빈 큐를 만든다.
+객체 네 개 선생성, 최근 반환 객체 전용 캐시, 용량별 검색은 사용하지 않는다.
 
-`Get()`은 초기 용량 4로 필요한 객체만 생성한다. 과거 네 개 객체 선생성은 제거했다.
-반환 객체 하나는 별도 슬롯, 나머지는 대여 상태 안의 연결 목록에 보관한다. 같은 동시 대여 수와 원소 수로
-예열하고 보관 상한 안에서 반복하면 정상적인 Get·처리·Dispose에 관리 힙 할당이 없다.
+`Get(capacity)`는 기록한 용량 하한이 충분한 맨 위 큐를 재사용한다.
+부족하면 Queue 생성자로 지정 용량의 새 PooledQueue를 만들어 교체한다.
+netstandard2.1에는 Queue.EnsureCapacity와 배열 용량 조회 API가 없으므로 내부 배열 reflection은 사용하지 않는다.
 
-`Get(capacity)`는 최소 용량을 실제로 보장한다. 생성 용량과 실제 들어갔던 최대 원소 수를
-보수적인 용량 하한으로 기록하며 Count가 기존 하한을 넘을 때만 갱신한다.
-별도 슬롯의 하한이 충분하면 바로 대여한다. 부족하면 연결 목록에서 요청 용량을 보장하는
-첫 대기 큐를 찾아 재사용하고, 그런 큐가 없을 때만 부족한 큐를 `new Queue<T>(capacity)`로 교체한다.
-목록 탐색 비용은 대기 객체 수에 비례하므로 크기가 다른 요청에서 불필요한 생성과 맞바꾸는 비용이다.
-MaxInactive가 큰 경우 이 탐색 비용도 고려해야 한다.
-대상 참조 API에 없는 `EnsureCapacity`나 내부 배열 reflection은 사용하지 않는다.
-`TrimExcess` 후 하한은 현재 Count로 낮춰 다음 용량 요청도 안전하게 보장한다.
-실제 여유 배열 용량을 조회하지 못하므로 충분한 큐를 보수적으로 교체하는 경우는 있을 수 있다.
-이 변경은 보장된 용량이 충분한 다른 대기 큐의 재사용을 개선하며, BCL이 자동 증설한 미확인 여유 용량을 추정하지 않는다.
+용량 하한은 생성 용량과 Dispose 시 남아 있는 Count로만 기록한다.
+따라서 크게 자동 증설한 뒤 완전히 비운 큐의 여유 용량은 확인하지 못하고,
+더 큰 명시적 용량 요청에서 충분한 기존 큐를 교체할 수도 있다.
+반복 작업은 예상 최대 원소 수로 Warmup하고 같은 용량 요청을 사용하면 이 교체를 피할 수 있다.
+
+PooledQueue.TrimExcess는 기본 Queue 정책으로 축소한 뒤 기록한 용량 하한을 현재 Count로 낮춘다.
+Queue로 변환하여 기본 TrimExcess를 직접 호출하면 이 기록 갱신을 우회하므로,
+이후 `Get(capacity)`의 증설 없는 사용 보장을 신뢰할 수 없다.
+일반 Queue 연산에 검사 비용을 추가하지 않는 대신 호출자가 이 사용 규칙을 지켜야 한다.
 
 `Warmup(inactiveCount, capacity)`는 기존 대기 큐의 용량을 준비하고 지정 수까지 채운다.
-활성 대여는 변경하지 않는다. 생성·예열·증설에는 할당이 있다. 모든 대기 큐의 용량을 준비하므로
-`inactiveCount`가 현재 대기 수보다 작거나 0이어도 기존 대기 큐는 용량 준비 대상이다.
+활성 대여는 변경하지 않으며 기존 용량 하한이 부족한 큐만 교체한다.
+inactiveCount가 현재 대기 수보다 작거나 0이어도 기존 대기 큐는 용량 준비 대상이다.
+기본 capacity는 0이다. 생성·예열·증설에는 할당이 있고 충분히 준비한 반복 사용은 객체와 배열을 재사용한다.
 
-`MaxInactive`는 T별 대기 객체 수 상한 (기본 32)이다. 0이면 반환 객체를 보관하지 않는다.
-축소는 초과 대기 객체만 놓아주며 활성 대여에는 영향이 없다. `CountInactive`는 대기 수만 센다.
-`Clear()`는 대기 객체를 놓아주고 활성 대여는 보호한다. Clear 이후 활성 대여의 반환은
-현재 상한에 따라 다시 보관한다. 즉 Clear는 이전에 대여된 객체의 후속 반환을 차단하지 않는다.
-대기 목록을 비울 때 연결도 끊으므로 오래된 핸들이 다른 대기 객체를 연결을 통해 붙잡지 않는다.
+`Get(source)`는 입력 개수를 알 수 있으면 먼저 용량을 준비하고 FIFO 순서로 복사한다.
+새 큐가 필요한 배열, List 등 ICollection<T> 입력은 기본 Queue의 복사 생성자를 사용한다.
+충분한 용량의 큐를 재사용할 때나 그 밖의 입력은 기존 복사 경로를 사용한다.
+배열, List, Queue를 순회할 때는 실제 구체 타입으로 순회하여 입력 열거자 박싱을 피한다.
+다른 IEnumerable 입력은 입력 구현에 따라 열거자 할당이 발생할 수 있다.
+Count 조회는 대여 전에 수행하며, 대여한 큐의 입력 처리에 실패하면 큐를 정리하고 반환한 뒤 예외를 다시 던진다.
+용량이 부족한 대기 큐를 교체하는 중 복사 생성자가 실패하면 기존 대기 큐를 풀에 복원한다.
+null 입력은 빈 대여다.
 
-반환마다 `Queue.Clear`로 원소 참조를 정리하고 배열은 유지한다. 자동 Trim은 하지 않는다.
-객체 수 상한은 배열 크기 또는 총 보관 메모리 상한이 아니다. 큰 용량을 계속 유지할지는
-실제 재사용 수요를 기준으로 판단하고 필요하면 대여 시 명시적 Trim 또는 풀 Clear를 사용한다.
+직접 using과 구체 타입 foreach는 반환 핸들이나 열거자를 박싱하지 않는다.
+클래스인 PooledQueue를 읽기 인터페이스나 IDisposable로 변환해도 큐 자체는 박싱하지 않는다.
+인터페이스 순회는 Queue의 구조체 열거자를 박싱할 수 있고 비제네릭 순회는 값형 원소도 박싱할 수 있다.
+비어 있지 않은 ToArray 결과는 새 배열을 할당한다.
 
-`Get(in IEnumerable<T>? source)`는 기존 호출 형태를 유지한다. null은 빈 대여다.
-IEnumerable 변수 안에 담긴 배열과 구체 List도 실제 타입에 따라 직접 순회하여 입력 열거자 할당을 피한다.
-다른 입력은 일반 인터페이스 순회다. 입력의 Count 조회는 대여 전에 수행한다.
-대여 후 GetEnumerator·MoveNext·Current·열거자 Dispose에서 예외가 나면 원소를 정리하여 반환하고 예외를 다시 던진다.
-`ReadOnlySpan<T>`는 대상에서 가능하지만 확인된 소비자 수요가 없어 이번 API에는 추가하지 않았다.
+## 보관과 스레드
 
-직접 `using var`와 구체 타입 `foreach`는 핸들·열거자를 박싱하지 않는다.
-인터페이스 변환은 핸들을, 인터페이스 열거는 열거자를 박싱할 수 있다. JIT가 특정 지역 변환의
-박싱을 제거할 수도 있으므로 모든 인터페이스 사용을 무할당으로 간주해서는 안 된다.
-비제네릭 열거의 값형 원소도 박싱될 수 있다. `ToArray`의 비어 있지 않은 결과 배열 할당은 의도된 동작이다.
+기존 MaxInactive, CountInactive, Clear API는 유지한다.
+MaxInactive는 T별 대기 큐 개수 상한이며 기본값은 32다. 배열 크기 또는 총 메모리 상한은 아니다.
+상한 축소는 초과 대기 큐를 놓아주고 0이면 이후 반환 객체를 보관하지 않는다.
+Warmup 개수는 상한을 넘을 수 없다.
+Clear는 대기 큐만 풀에서 놓아주고 활성 대여는 건드리지 않는다.
+Clear 이후 활성 큐가 반환되면 현재 상한을 적용해 다시 보관한다.
 
-## 스레드 계약
+큐와 풀은 스레드 안전하지 않다. 같은 T의 풀 작업과 큐 접근을 외부에서 직렬화해야 한다.
+ICollection.SyncRoot도 풀 전체의 스레드 안전성을 제공하지 않는다.
 
-풀과 대여는 스레드 안전하지 않다. 기존 풀도 동기화되지 않았으며 확인된 QV 소비자는 함수 안에서
-using으로 동기 BFS를 수행한다. 같은 T에 대한 모든 풀 작업과 대여 접근을 하나의 외부 정책으로 직렬화해야 한다.
-세대 검사와 `SyncRoot`만으로 검사와 사용 사이의 경쟁 조건을 막을 수 없다.
+## 이전 세대 검사 핸들에서의 변경
 
-## 호환성 변경
+2026-10-07부터 성능을 우선하여 readonly struct 세대 검사 핸들을 Queue 상속 클래스로 변경했다.
+기존 using var와 명시적인 PooledQueue 선언은 유지되며 Queue 매개변수로 직접 전달할 수 있다.
+이전 struct 바이너리와 호환되지 않으므로 소비자와 의존 라이브러리를 새 DLL에 대해 다시 빌드해야 한다.
+기본 Get/Warmup의 생성 용량은 4에서 0으로 변경했다.
 
-class에서 struct로 변경하고 Queue 상속을 제거했으므로 **기존 바이너리와 호환되지 않는다**.
-소비자와 의존 라이브러리를 새 DLL에 대해 다시 빌드해야 한다. 이번 작업에서는 버전·패키지를 게시하거나
-소비자 설치본을 갱신하지 않는다.
+default의 무해한 Dispose, 반환 후 ObjectDisposedException, 오래된 핸들의 무해한 반환,
+열거자의 세대 검사는 더 이상 현재 계약이 아니다.
+기존 tests/CrowRx.Pool.QueueTests의 세대 검사 테스트와 과거 성능·검증 기록은 이전 구현을 대상으로 한다.
+세대 상태 reflection을 사용하는 QueueComparisonBenchmarks도 이전 구현 전용이다.
+이 문서의 현재 계약 검증과 과거 세대 검사 결과를 구분해야 한다.
 
-- `using var queue = QueuePool<T>.Get()`와 명시적인 `using PooledQueue<T>`는 유지된다.
-- `Queue<T>` 매개변수·필드·변환을 사용하던 코드는 `PooledQueue<T>`나 필요한 읽기 인터페이스로 바꿔야 한다.
-- null 검사, 참조 동일성, class 제약, Queue 상속에 의존하는 코드는 수정해야 한다.
-- 핸들을 다른 곳에 전달하면 같은 대여를 공유한다. 반환 책임자를 하나로 정하고 using 범위 밖으로 탈출시키지 않는다.
-- `Get(default)`처럼 형식을 생략한 default 리터럴은 새 capacity 오버로드 때문에 모호할 수 있다.
-  `Get()` 또는 형식을 지정한 source를 사용한다. 기존 `in IEnumerable<T>` 호출은 유지된다.
-
-CrowRx 전체 실제 참조와 문서를 검색했고 별도 QueuePool 코드 소비자는 발견하지 않았다.
-QV의 세 사용처는 `DungeonDirector.cs:456`, `BlueprintGenerator.cs:1196`, `BlueprintGenerator.cs:2219`로 재확인했다.
-모두 Count·Enqueue·Dequeue를 사용하는 함수 내부 동기 BFS이며 Queue 타입으로 넘기는 사용은 발견하지 않았다.
-반환 후 접근 문제가 실제 QV에서 발생했다는 증거는 없다. QV 코드와 설치 패키지는 변경하지 않았다.
-
-검증 절차와 실측 결과는 원본 저장소의 `tests/QUEUE_VERIFICATION.ko.md`에 기록한다.
+이 변경은 CrowRx 소스에 적용한다. 소비자 설치 DLL, Unity 패키지 복사본과 배포 버전은 갱신하지 않는다.
