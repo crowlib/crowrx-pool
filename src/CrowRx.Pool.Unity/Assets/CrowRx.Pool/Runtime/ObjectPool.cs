@@ -8,9 +8,6 @@ using Cysharp.Threading.Tasks;
 
 namespace CrowRx.Pool
 {
-    using Utility;
-
-
     public class ObjectPool<TSource, TInstance> : IObjectPool<TInstance>
         where TInstance : class
     {
