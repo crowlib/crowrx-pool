@@ -92,6 +92,64 @@ int id = converter.GatValue<int>(0); // 100 (parsed and cached)
 bool flag = converter.GatValue<bool>(1); // True
 ```
 
+---
+
+### 5. String Utilities (`StringExtension` Static Class)
+Helpers for extracting delimited text and capitalizing the first character.
+
+*   **`SubstringBetween(start, end)`**: Returns the text between the first ordinal match of `start` and the next ordinal match of `end`. Returns an empty string when the source is null or empty, or either delimiter is missing. Delimiters must be non-null.
+*   **`ToUpperFirst()`**: Uppercases only the first character using invariant casing, leaving the remaining characters unchanged. Returns an empty string for a null or empty source, and the original string when the first character is already unchanged by uppercasing.
+
+**Example:**
+```csharp
+using CrowRx;
+
+string content = "<name>CrowRx</name>".SubstringBetween("<name>", "</name>"); // "CrowRx"
+string title = "crowRx".ToUpperFirst(); // "CrowRx"
+```
+
+---
+
+### 6. Type Utilities (`TypeExtension` Static Class)
+Helpers for checking type assignability and formatting readable type names.
+
+*   **`InheritsFrom(target)`**, **`InheritsFrom(target, isIncludeSelf)`**: Checks whether the target type is assignable from the source type, including base classes and implemented interfaces. An identical type matches by default; pass `false` to exclude it. Returns false when either type is null.
+*   **`GetRealTypeName()`**: Returns a short display name with readable generic arguments, such as `Dictionary<String,Int32>`. Omits namespaces and declaring types.
+*   **`GetRealTypeFullName()`**: Returns a display name including namespaces and declaring types, such as `System.Collections.Generic.List<System.Int32>`. Nested types use dots instead of `+`.
+
+Both name helpers support arrays (including multidimensional arrays), pointers, by-reference types, and generic parameters. They throw `ArgumentNullException` for a null type. These names are for display; use `AssemblyQualifiedName` when an identifier must distinguish assemblies.
+
+**Example:**
+```csharp
+using System.Collections.Generic;
+using CrowRx;
+
+bool implementsInterface = typeof(List<int>).InheritsFrom(typeof(IEnumerable<int>)); // true
+bool excludesSelf = typeof(List<int>).InheritsFrom(typeof(List<int>), false); // false
+string name = typeof(Dictionary<string, int>).GetRealTypeName(); // "Dictionary<String,Int32>"
+string fullName = typeof(List<int>).GetRealTypeFullName(); // "System.Collections.Generic.List<System.Int32>"
+```
+
+---
+
+### 7. Cancellation Token Source Utilities (`CancellationTokenSourceExtension` Static Class)
+Owner-managed cancellation and disposal of a token source.
+
+*   **`Release()`**: Requests cancellation unless it has already been requested, then disposes the source in a `finally` block. A null source is ignored. Exceptions from cancellation callbacks propagate, but the source is still disposed.
+
+Call this from the owner when operations no longer need to access the token source. It does not wait for asynchronous operations to finish and does not guarantee safe repeated calls after disposal.
+
+**Example:**
+```csharp
+using System.Threading;
+using CrowRx;
+
+var source = new CancellationTokenSource();
+CancellationToken token = source.Token;
+// Pass token to the owned operation and finish any access to source before cleanup.
+source.Release();
+```
+
 ## Requirements
 - **Unity 6.0 or newer**
 - **.NET 10.0 SDK** (for compilation; see `global.json`)
